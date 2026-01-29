@@ -319,6 +319,54 @@
             box-shadow: 0 0 0 rgba(0,0,0,0.2);
         }
 
+        .delete-btn {
+            display: inline-block;
+            margin-left: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            background: #dc3545;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.85rem;
+            border: 2px solid var(--text);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-family: 'Darker Grotesque', sans-serif;
+            cursor: pointer;
+        }
+
+        .delete-btn:hover {
+            background: #c82333;
+            transform: translate(1px, 1px);
+            box-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+        }
+
+        .delete-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 0 0 0 rgba(0,0,0,0.2);
+        }
+
+        .confirm-modal {
+            background: #fff3cd;
+            border: 3px solid #856404;
+        }
+
+        .confirm-modal h2 {
+            color: #856404;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .modal-buttons .btn {
+            flex: 1;
+        }
+
         .rating-section {
             display: grid;
             gap: 1rem;
@@ -365,16 +413,16 @@
         .star svg {
             width: 100%;
             height: 100%;
-            fill: var(--bg);
+            fill: #f0f0f0;
             stroke: var(--text);
-            stroke-width: 2;
+            stroke-width: 1.5;
             transition: all 0.2s;
         }
 
         .star:hover svg,
         .star.active svg {
-            fill: var(--accent);
-            stroke: var(--text);
+            fill: #FFD700;
+            stroke: #FFA500;
             transform: scale(1.1);
         }
 
@@ -642,6 +690,17 @@
             <h2>✅ Succes!</h2>
             <p id="modalMessage"></p>
             <button class="btn" onclick="closeModal()" style="margin-top: 1rem; width: 100%;">OK</button>
+        </div>
+    </div>
+
+    <div class="modal" id="confirmModal">
+        <div class="modal-content confirm-modal">
+            <h2>⚠️ Er du sikker?</h2>
+            <p id="confirmMessage"></p>
+            <div class="modal-buttons">
+                <button class="btn" onclick="closeConfirmModal()">Annuller</button>
+                <button class="btn" style="background: #dc3545; color: white;" onclick="confirmDelete()">Ja, slet bog</button>
+            </div>
         </div>
     </div>
 
@@ -954,7 +1013,10 @@
                             <div class="book-title">${escapeHtml(title)}</div>
                             <div class="book-author">${escapeHtml(author)}</div>
                             ${year ? `<div class="book-meta">Udgivet: ${escapeHtml(year)}${binding ? ` • ${escapeHtml(binding)}` : ''}</div>` : ''}
-                            <a href="${googleBooksUrl}" target="_blank" class="cover-btn">📖 Se forside</a>
+                            <div style="margin-top: 0.5rem;">
+                                <a href="${googleBooksUrl}" target="_blank" class="cover-btn">📖 Se forside</a>
+                                <button class="delete-btn" onclick="askDeleteBook('${escapeHtml(bookId)}', '${escapeHtml(title)}')">🗑️ Slet bog</button>
+                            </div>
                         </div>
                         
                         <div class="rating-section">
@@ -1009,7 +1071,7 @@
                 html += `
                     <div class="star ${active}" data-rating="${i}" data-book-id="${escapeHtml(bookId)}" data-category="${category}">
                         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2C12 2 14.5 8.5 15.5 10C16.5 11.5 23 12 23 12C23 12 17.5 16 16 17.5C14.5 19 16 25 16 25C16 25 12 21 12 21C12 21 8 25 8 25C8 25 9.5 19 8 17.5C6.5 16 1 12 1 12C1 12 7.5 11.5 8.5 10C9.5 8.5 12 2 12 2Z" style="stroke-linejoin: round; stroke-linecap: round;"/>
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                         </svg>
                     </div>
                 `;
@@ -1138,6 +1200,48 @@
 
         function closeModal() {
             document.getElementById('successModal').classList.remove('active');
+        }
+
+        let bookToDelete = null;
+
+        function askDeleteBook(bookId, title) {
+            bookToDelete = bookId;
+            document.getElementById('confirmMessage').textContent = `Vil du slette "${title}"? Dette kan ikke fortrydes.`;
+            document.getElementById('confirmModal').classList.add('active');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.remove('active');
+            bookToDelete = null;
+        }
+
+        function confirmDelete() {
+            if (!bookToDelete) return;
+
+            // Fjern bog fra books array
+            books = books.filter(book => {
+                const id = book['Book Id'] || book['book id'];
+                return id !== bookToDelete;
+            });
+
+            // Fjern ratings for bogen
+            if (ratings[bookToDelete]) {
+                delete ratings[bookToDelete];
+            }
+
+            // Gem opdateringer
+            localStorage.setItem('books', JSON.stringify(books));
+            localStorage.setItem('bookRatings', JSON.stringify(ratings));
+
+            // Luk modal
+            closeConfirmModal();
+
+            // Re-render
+            renderBooks();
+            updateStats();
+
+            // Vis bekræftelse
+            showModal('Bogen er blevet slettet permanent.');
         }
     </script>
 </body>
