@@ -357,6 +357,8 @@
             width: 100%;
             height: 100%;
             cursor: pointer;
+            top: 0;
+            left: 0;
         }
 
         .modal {
@@ -516,6 +518,7 @@
             padding: 1rem;
             margin: 1rem 0;
             font-weight: 600;
+            border-radius: 4px;
         }
     </style>
 </head>
@@ -537,7 +540,7 @@
             <p style="margin-bottom: 1rem;">Start med at uploade din Goodreads library export fil</p>
             <div class="file-input-wrapper">
                 <button class="btn">📁 Vælg fil</button>
-                <input type="file" id="csvFile" accept=".csv" onchange="loadCSV(event)">
+                <input type="file" id="csvFile" accept=".csv" onchange="handleFileUpload(event)">
             </div>
             <div id="errorMessage"></div>
         </div>
@@ -607,15 +610,23 @@
             const savedTheme = localStorage.getItem('theme');
             
             if (savedRatings) {
-                ratings = JSON.parse(savedRatings);
+                try {
+                    ratings = JSON.parse(savedRatings);
+                } catch (e) {
+                    console.error('Fejl ved indlæsning af ratings:', e);
+                }
             }
             
             if (savedBooks) {
-                books = JSON.parse(savedBooks);
-                document.getElementById('uploadSection').style.display = 'none';
-                document.getElementById('mainContent').style.display = 'block';
-                renderBooks();
-                updateStats();
+                try {
+                    books = JSON.parse(savedBooks);
+                    document.getElementById('uploadSection').style.display = 'none';
+                    document.getElementById('mainContent').style.display = 'block';
+                    renderBooks();
+                    updateStats();
+                } catch (e) {
+                    console.error('Fejl ved indlæsning af bøger:', e);
+                }
             }
 
             if (savedTheme === 'novo') {
@@ -629,144 +640,181 @@
             localStorage.setItem('theme', theme);
         }
 
-        function loadCSV(event) {
+        function handleFileUpload(event) {
             const file = event.target.files[0];
-            if (!file) return;
+            if (!file) {
+                console.log('Ingen fil valgt');
+                return;
+            }
+
+            console.log('Fil valgt:', file.name, 'Størrelse:', file.size, 'Type:', file.type);
 
             const errorDiv = document.getElementById('errorMessage');
-            errorDiv.innerHTML = '';
+            errorDiv.innerHTML = '<div style="padding: 1rem; background: #e3f2fd; border: 2px solid #2196f3; color: #1976d2; margin-top: 1rem;">Indlæser fil...</div>';
 
             const reader = new FileReader();
+            
             reader.onload = function(e) {
                 try {
+                    console.log('Fil indlæst, størrelse:', e.target.result.length);
                     const text = e.target.result;
                     parseCSV(text);
                 } catch (error) {
-                    console.error('Fejl ved indlæsning:', error);
-                    errorDiv.innerHTML = `<div class="error-message">Fejl ved indlæsning af filen: ${error.message}</div>`;
+                    console.error('Fejl ved parsing:', error);
+                    errorDiv.innerHTML = `<div class="error-message">Fejl: ${error.message}<br><br>Tjek console (F12) for detaljer</div>`;
                 }
             };
-            reader.onerror = function() {
+            
+            reader.onerror = function(e) {
+                console.error('FileReader fejl:', e);
                 errorDiv.innerHTML = '<div class="error-message">Kunne ikke læse filen. Prøv igen.</div>';
             };
+            
             reader.readAsText(file, 'UTF-8');
         }
 
-        function parseCSV(text) {
-            // Split into lines, but handle line breaks within quoted fields
-            const lines = [];
-            let currentLine = '';
-            let inQuotes = false;
+        function parseCSV(csvText) {
+            console.log('Starter CSV parsing...');
+            console.log('Første 500 tegn:', csvText.substring(0, 500));
+
+            const errorDiv = document.getElementById('errorMessage');
             
-            for (let i = 0; i < text.length; i++) {
-                const char = text[i];
-                const nextChar = text[i + 1];
+            // Split på newlines, men bevar quoted fields
+            const rows = [];
+            let currentRow = '';
+            let insideQuotes = false;
+            
+            for (let i = 0; i < csvText.length; i++) {
+                const char = csvText[i];
+                const prevChar = csvText[i - 1];
                 
                 if (char === '"') {
-                    if (inQuotes && nextChar === '"') {
-                        currentLine += '"';
-                        i++; // Skip next quote
-                    } else {
-                        inQuotes = !inQuotes;
-                        currentLine += char;
+                    insideQuotes = !insideQuotes;
+                    currentRow += char;
+                } else if ((char === '\n' || char === '\r') && !insideQuotes) {
+                    if (currentRow.trim()) {
+                        rows.push(currentRow.trim());
                     }
-                } else if (char === '\n' && !inQuotes) {
-                    if (currentLine.trim()) {
-                        lines.push(currentLine);
+                    currentRow = '';
+                    // Skip \r\n
+                    if (char === '\r' && csvText[i + 1] === '\n') {
+                        i++;
                     }
-                    currentLine = '';
-                } else if (char === '\r') {
-                    // Skip carriage returns
-                    continue;
-                } else {
-                    currentLine += char;
+                } else if (char !== '\r') {
+                    currentRow += char;
                 }
             }
             
-            // Add last line if exists
-            if (currentLine.trim()) {
-                lines.push(currentLine);
+            if (currentRow.trim()) {
+                rows.push(currentRow.trim());
             }
 
-            if (lines.length === 0) {
-                throw new Error('CSV-filen er tom');
+            console.log('Fandt', rows.length, 'rækker');
+
+            if (rows.length < 2) {
+                throw new Error('CSV filen skal indeholde mindst en header-række og en data-række');
             }
 
             // Parse header
-            const headers = parseCSVLine(lines[0]);
-            console.log('Headers found:', headers);
+            const headerRow = rows[0];
+            console.log('Header række:', headerRow);
             
+            const headers = parseCSVRow(headerRow);
+            console.log('Headers parsed:', headers);
+
+            if (!headers.includes('Title') && !headers.includes('title')) {
+                throw new Error('CSV filen mangler "Title" kolonnen. Tjek at det er en Goodreads export fil.');
+            }
+
             books = [];
-            
+            let successCount = 0;
+            let errorCount = 0;
+
             // Parse data rows
-            for (let i = 1; i < lines.length; i++) {
+            for (let i = 1; i < rows.length; i++) {
                 try {
-                    const values = parseCSVLine(lines[i]);
+                    const values = parseCSVRow(rows[i]);
                     
-                    if (values.length === 0 || !values.some(v => v.trim())) {
-                        continue; // Skip empty lines
+                    if (values.length === 0 || values.every(v => !v || !v.trim())) {
+                        continue;
                     }
-                    
+
                     const book = {};
                     headers.forEach((header, index) => {
                         book[header] = values[index] || '';
                     });
+
+                    // Find titel - prøv både Title og title
+                    const title = book['Title'] || book['title'] || '';
                     
-                    // Only add if has a title
-                    if (book['Title'] && book['Title'].trim()) {
+                    if (title && title.trim()) {
+                        // Generer Book Id hvis den ikke findes
+                        if (!book['Book Id'] && !book['book id']) {
+                            book['Book Id'] = 'book_' + i + '_' + Date.now();
+                        } else if (book['book id']) {
+                            book['Book Id'] = book['book id'];
+                        }
+                        
                         books.push(book);
+                        successCount++;
                     }
                 } catch (error) {
-                    console.warn(`Fejl i linje ${i + 1}:`, error);
+                    console.warn(`Fejl i række ${i + 1}:`, error);
+                    errorCount++;
                 }
             }
 
+            console.log('Parsing færdig:', successCount, 'bøger indlæst,', errorCount, 'fejl');
+
             if (books.length === 0) {
-                throw new Error('Ingen bøger fundet i CSV-filen. Tjek at filen er korrekt formateret.');
+                throw new Error(`Ingen bøger kunne indlæses. Fandt ${rows.length} rækker, men ingen valide bogdata.`);
             }
 
+            // Gem til localStorage
             localStorage.setItem('books', JSON.stringify(books));
             
+            // Skift visning
             document.getElementById('uploadSection').style.display = 'none';
             document.getElementById('mainContent').style.display = 'block';
             
+            // Render bøger
             renderBooks();
             updateStats();
             
-            showModal(`${books.length} bøger indlæst! Begynd at rate dem nu.`);
+            showModal(`✅ ${books.length} bøger indlæst succesfuldt!${errorCount > 0 ? ` (${errorCount} rækker sprunget over)` : ''}`);
         }
 
-        function parseCSVLine(line) {
-            const result = [];
-            let current = '';
-            let inQuotes = false;
+        function parseCSVRow(row) {
+            const fields = [];
+            let currentField = '';
+            let insideQuotes = false;
             
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                const nextChar = line[i + 1];
+            for (let i = 0; i < row.length; i++) {
+                const char = row[i];
+                const nextChar = row[i + 1];
                 
                 if (char === '"') {
-                    if (inQuotes && nextChar === '"') {
+                    if (insideQuotes && nextChar === '"') {
                         // Escaped quote
-                        current += '"';
+                        currentField += '"';
                         i++; // Skip next quote
                     } else {
-                        // Toggle quote state
-                        inQuotes = !inQuotes;
+                        // Toggle quotes
+                        insideQuotes = !insideQuotes;
                     }
-                } else if (char === ',' && !inQuotes) {
-                    // Field separator
-                    result.push(current.trim());
-                    current = '';
+                } else if (char === ',' && !insideQuotes) {
+                    // End of field
+                    fields.push(currentField.trim());
+                    currentField = '';
                 } else {
-                    current += char;
+                    currentField += char;
                 }
             }
             
             // Add last field
-            result.push(current.trim());
+            fields.push(currentField.trim());
             
-            return result;
+            return fields;
         }
 
         function renderBooks() {
@@ -775,36 +823,54 @@
 
             // Apply filter
             if (currentFilter === 'rated') {
-                filteredBooks = filteredBooks.filter(book => ratings[book['Book Id']]);
+                filteredBooks = filteredBooks.filter(book => {
+                    const bookId = book['Book Id'] || book['book id'];
+                    return ratings[bookId];
+                });
             } else if (currentFilter === 'unrated') {
-                filteredBooks = filteredBooks.filter(book => !ratings[book['Book Id']]);
+                filteredBooks = filteredBooks.filter(book => {
+                    const bookId = book['Book Id'] || book['book id'];
+                    return !ratings[bookId];
+                });
             }
 
             // Apply search
             const searchTerm = document.getElementById('searchBox')?.value.toLowerCase() || '';
             if (searchTerm) {
-                filteredBooks = filteredBooks.filter(book => 
-                    (book['Title'] || '').toLowerCase().includes(searchTerm) ||
-                    (book['Author'] || '').toLowerCase().includes(searchTerm)
-                );
+                filteredBooks = filteredBooks.filter(book => {
+                    const title = (book['Title'] || book['title'] || '').toLowerCase();
+                    const author = (book['Author'] || book['author'] || '').toLowerCase();
+                    return title.includes(searchTerm) || author.includes(searchTerm);
+                });
             }
 
             // Apply sort
             const sortValue = document.getElementById('sortSelect')?.value || 'title-asc';
             filteredBooks.sort((a, b) => {
+                const aTitle = a['Title'] || a['title'] || '';
+                const bTitle = b['Title'] || b['title'] || '';
+                const aAuthor = a['Author'] || a['author'] || '';
+                const bAuthor = b['Author'] || b['author'] || '';
+                
                 switch(sortValue) {
                     case 'title-asc':
-                        return (a['Title'] || '').localeCompare(b['Title'] || '', 'da');
+                        return aTitle.localeCompare(bTitle, 'da');
                     case 'title-desc':
-                        return (b['Title'] || '').localeCompare(a['Title'] || '', 'da');
+                        return bTitle.localeCompare(aTitle, 'da');
                     case 'author-asc':
-                        return (a['Author'] || '').localeCompare(b['Author'] || '', 'da');
+                        return aAuthor.localeCompare(bAuthor, 'da');
                     case 'author-desc':
-                        return (b['Author'] || '').localeCompare(a['Author'] || '', 'da');
-                    case 'rated-first':
-                        return (ratings[b['Book Id']] ? 1 : 0) - (ratings[a['Book Id']] ? 1 : 0);
-                    case 'unrated-first':
-                        return (ratings[a['Book Id']] ? 1 : 0) - (ratings[b['Book Id']] ? 1 : 0);
+                        return bAuthor.localeCompare(aAuthor, 'da');
+                    case 'rated-first': {
+                        const aId = a['Book Id'] || a['book id'];
+                        const bId = b['Book Id'] || b['book id'];
+                        return (ratings[bId] ? 1 : 0) - (ratings[aId] ? 1 : 0);
+                    }
+                    case 'unrated-first': {
+                        const aId = a['Book Id'] || a['book id'];
+                        const bId = b['Book Id'] || b['book id'];
+                        return (ratings[aId] ? 1 : 0) - (ratings[bId] ? 1 : 0);
+                    }
                     default:
                         return 0;
                 }
@@ -821,43 +887,48 @@
             }
 
             bookList.innerHTML = filteredBooks.map(book => {
-                const bookId = book['Book Id'];
+                const bookId = book['Book Id'] || book['book id'] || '';
+                const title = book['Title'] || book['title'] || 'Uden titel';
+                const author = book['Author'] || book['author'] || 'Ukendt forfatter';
+                const year = book['Year Published'] || book['year published'] || book['Original Publication Year'] || '';
+                const binding = book['Binding'] || book['binding'] || '';
+                
                 const rating = ratings[bookId] || {};
                 const isRated = rating.overall > 0;
                 
                 return `
-                    <div class="book-card ${isRated ? 'rated' : ''}" data-book-id="${bookId}">
+                    <div class="book-card ${isRated ? 'rated' : ''}" data-book-id="${escapeHtml(bookId)}">
                         <div class="book-header">
-                            <div class="book-title">${escapeHtml(book['Title'] || 'Uden titel')}</div>
-                            <div class="book-author">${escapeHtml(book['Author'] || 'Ukendt forfatter')}</div>
-                            ${book['Year Published'] ? `<div class="book-meta">Udgivet: ${escapeHtml(book['Year Published'])} • ${escapeHtml(book['Binding'] || 'N/A')}</div>` : ''}
+                            <div class="book-title">${escapeHtml(title)}</div>
+                            <div class="book-author">${escapeHtml(author)}</div>
+                            ${year ? `<div class="book-meta">Udgivet: ${escapeHtml(year)}${binding ? ` • ${escapeHtml(binding)}` : ''}</div>` : ''}
                         </div>
                         
                         <div class="rating-section">
                             <div class="rating-row">
                                 <div class="rating-label humor">😄 Humor</div>
-                                <div class="stars" data-category="humor" data-book-id="${bookId}">
+                                <div class="stars" data-category="humor" data-book-id="${escapeHtml(bookId)}">
                                     ${generateStars(5, rating.humor || 0, bookId, 'humor')}
                                 </div>
                             </div>
                             
                             <div class="rating-row">
                                 <div class="rating-label mening">🧠 Mening</div>
-                                <div class="stars" data-category="mening" data-book-id="${bookId}">
+                                <div class="stars" data-category="mening" data-book-id="${escapeHtml(bookId)}">
                                     ${generateStars(5, rating.mening || 0, bookId, 'mening')}
                                 </div>
                             </div>
                             
                             <div class="rating-row">
                                 <div class="rating-label overraskelse">✨ Overraskelse</div>
-                                <div class="stars" data-category="overraskelse" data-book-id="${bookId}">
+                                <div class="stars" data-category="overraskelse" data-book-id="${escapeHtml(bookId)}">
                                     ${generateStars(5, rating.overraskelse || 0, bookId, 'overraskelse')}
                                 </div>
                             </div>
                             
                             <div class="rating-row" style="margin-top: 1rem; padding-top: 1rem; border-top: 2px solid var(--bg);">
                                 <div class="rating-label overall">⭐ Samlet</div>
-                                <div class="stars" data-category="overall" data-book-id="${bookId}">
+                                <div class="stars" data-category="overall" data-book-id="${escapeHtml(bookId)}">
                                     ${generateStars(5, rating.overall || 0, bookId, 'overall')}
                                 </div>
                             </div>
@@ -883,7 +954,7 @@
             for (let i = 1; i <= count; i++) {
                 const active = i <= currentRating ? 'active' : '';
                 html += `
-                    <div class="star ${active}" data-rating="${i}" data-book-id="${bookId}" data-category="${category}">
+                    <div class="star ${active}" data-rating="${i}" data-book-id="${escapeHtml(bookId)}" data-category="${category}">
                         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                         </svg>
@@ -965,17 +1036,13 @@
                 return;
             }
 
-            // Create CSV with updated ratings
             const headers = Object.keys(books[0]);
-            
-            // Build CSV with proper quoting
             let csv = headers.map(h => quoteCSVField(h)).join(',') + '\n';
 
             books.forEach(book => {
-                const bookId = book['Book Id'];
+                const bookId = book['Book Id'] || book['book id'];
                 const rating = ratings[bookId];
                 
-                // Update My Rating if we have an overall rating
                 if (rating && rating.overall) {
                     book['My Rating'] = rating.overall.toString();
                 }
@@ -987,7 +1054,6 @@
                 csv += row.join(',') + '\n';
             });
 
-            // Download CSV
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             const url = URL.createObjectURL(blob);
@@ -1000,14 +1066,12 @@
             link.click();
             document.body.removeChild(link);
 
-            showModal('Din opdaterede Goodreads CSV er downloadet! "My Rating" kolonnen er opdateret med dine samlede ratings.');
+            showModal('Din opdaterede Goodreads CSV er downloadet!');
         }
 
         function quoteCSVField(field) {
-            // Convert to string
             field = String(field);
             
-            // If field contains comma, quote, or newline, wrap in quotes and escape quotes
             if (field.includes(',') || field.includes('"') || field.includes('\n') || field.includes('\r')) {
                 return '"' + field.replace(/"/g, '""') + '"';
             }
