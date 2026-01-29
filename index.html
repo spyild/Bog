@@ -3,517 +3,933 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⏳ Optælling</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <title>Bog Rater - Alle dine bøger</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Darker+Grotesque:wght@300;400;600;700;900&family=Figtree:wght@300;400;600;700;900&display=swap" rel="stylesheet">
     <style>
+        :root {
+            /* Bauhaus tema */
+            --bauhaus-red: #E63946;
+            --bauhaus-yellow: #F1C40F;
+            --bauhaus-blue: #1D3557;
+            --bauhaus-black: #14213D;
+            --bauhaus-white: #F1FAEE;
+            --bauhaus-accent: #A8DADC;
+            
+            /* Aktiv Novo tema */
+            --novo-forest: #1A5632;
+            --novo-sage: #90A17D;
+            --novo-cream: #F5F1E3;
+            --novo-terracotta: #C9726E;
+            --novo-charcoal: #2B2D2F;
+            
+            /* Aktive farver */
+            --primary: var(--bauhaus-red);
+            --secondary: var(--bauhaus-blue);
+            --accent: var(--bauhaus-yellow);
+            --bg: var(--bauhaus-white);
+            --text: var(--bauhaus-black);
+            --card-bg: #FFFFFF;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Figtree', sans-serif;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
-            padding: 15px;
+            padding: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        
-        .container {
-            max-width: 500px;
+
+        body.novo-theme {
+            --primary: var(--novo-forest);
+            --secondary: var(--novo-terracotta);
+            --accent: var(--novo-sage);
+            --bg: var(--novo-cream);
+            --text: var(--novo-charcoal);
+            --card-bg: #FFFEF9;
+        }
+
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .header-content {
+            max-width: 1200px;
             margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        }
-        
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 24px;
-        }
-        
-        .categories {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-bottom: 20px;
-        }
-        
-        .category {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 12px 8px;
-            border-radius: 12px;
-            color: white;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.1s;
-            user-select: none;
-            min-height: 75px;
-        }
-        
-        .category:active {
-            transform: scale(0.98);
-        }
-        
-        .category-name {
-            font-size: 13px;
-            text-align: center;
-            margin-bottom: 5px;
-        }
-        
-        .category-count {
-            font-size: 20px;
-            background: rgba(255,255,255,0.3);
-            padding: 4px 10px;
-            border-radius: 20px;
-        }
-        
-        .slik { background: #dc2626; }
-        .org { background: #f97316; }
-        .mastro { background: #4b5563; }
-        .chokolade { background: #78350f; }
-        .quick50 { background: #065f46; }
-        .aktier { background: #6b21a8; }
-        .andet { background: #1e40af; }
-        
-        .view-toggle {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        
-        .view-toggle button {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            background: #f3f4f6;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 14px;
-        }
-        
-        .view-toggle button.active {
-            background: #667eea;
-            color: white;
-        }
-        
-        .stats-view {
-            background: #f9fafb;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .year-section {
-            margin-bottom: 25px;
-        }
-        
-        .year-section:last-child {
-            margin-bottom: 0;
-        }
-        
-        .year-header {
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 15px;
-            font-size: 18px;
-            padding-bottom: 8px;
-            border-bottom: 3px solid #667eea;
-        }
-        
-        .month-section {
-            margin-bottom: 15px;
-            background: white;
-            padding: 12px;
-            border-radius: 8px;
-        }
-        
-        .month-header {
-            font-weight: 700;
-            color: #374151;
-            margin-bottom: 10px;
-            font-size: 15px;
-            padding-bottom: 6px;
-            border-bottom: 2px solid #e5e7eb;
-        }
-        
-        .category-item {
-            padding: 8px 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #f3f4f6;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
-        
-        .category-item:last-child {
-            border-bottom: none;
+
+        h1 {
+            font-family: 'Darker Grotesque', sans-serif;
+            font-weight: 900;
+            font-size: clamp(1.5rem, 5vw, 2.5rem);
+            letter-spacing: -0.02em;
+            text-transform: uppercase;
         }
-        
-        .category-item-name {
-            font-weight: 600;
-            color: #4b5563;
-            font-size: 14px;
+
+        .controls {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
         }
-        
-        .category-item-count {
-            font-weight: 700;
-            font-size: 18px;
-            color: #1f2937;
-        }
-        
-        .entry-dates {
-            font-size: 12px;
-            color: #6b7280;
-            margin-top: 4px;
-        }
-        
-        .qr-section {
-            text-align: center;
-            padding: 20px;
-            background: #f9fafb;
-            border-radius: 12px;
-            margin-top: 20px;
-        }
-        
-        #qrcode {
-            display: inline-block;
-            padding: 10px;
-            background: white;
-            border-radius: 8px;
-        }
-        
-        .qr-info {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #6b7280;
-        }
-        
-        .delete-today-btn {
-            width: 100%;
-            padding: 12px;
-            margin-top: 15px;
-            border: 2px solid #dc2626;
-            background: white;
-            color: #dc2626;
-            border-radius: 8px;
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            background: var(--accent);
+            color: var(--text);
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
+            font-size: 0.9rem;
+            font-family: 'Darker Grotesque', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-radius: 0;
+            box-shadow: 3px 3px 0 rgba(0,0,0,0.2);
         }
-        
-        .delete-today-btn:hover {
-            background: #dc2626;
+
+        .btn:hover {
+            transform: translate(1px, 1px);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+        }
+
+        .btn:active {
+            transform: translate(3px, 3px);
+            box-shadow: 0 0 0 rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
             color: white;
+        }
+
+        .theme-toggle {
+            background: transparent;
+            border: 2px solid white;
+            color: white;
+            padding: 0.5rem 1rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .stats {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 5px 5px 0 var(--secondary);
+            border: 3px solid var(--text);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            text-align: center;
+        }
+
+        .stat-item {
+            padding: 1rem;
+            background: var(--bg);
+            border-left: 4px solid var(--primary);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 900;
+            font-family: 'Darker Grotesque', sans-serif;
+            color: var(--primary);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.5rem;
+            font-weight: 600;
+        }
+
+        .search-sort {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .search-box, .sort-select {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.8rem;
+            border: 3px solid var(--text);
+            background: var(--card-bg);
+            font-size: 1rem;
+            font-family: 'Figtree', sans-serif;
+        }
+
+        .search-box:focus, .sort-select:focus {
+            outline: none;
+            box-shadow: 5px 5px 0 var(--accent);
+        }
+
+        .book-list {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .book-card {
+            background: var(--card-bg);
+            border: 3px solid var(--text);
+            padding: 1.5rem;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: slideIn 0.4s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .book-card::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            background: var(--primary);
+            z-index: -1;
+            transform: translate(8px, 8px);
+            transition: transform 0.2s;
+        }
+
+        .book-card:hover::before {
+            transform: translate(12px, 12px);
+        }
+
+        .book-card.rated {
+            border-color: var(--primary);
+        }
+
+        .book-header {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--bg);
+        }
+
+        .book-title {
+            font-family: 'Darker Grotesque', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+            color: var(--text);
+            line-height: 1.2;
+        }
+
+        .book-author {
+            font-size: 1rem;
+            color: var(--secondary);
+            font-weight: 600;
+        }
+
+        .book-meta {
+            font-size: 0.85rem;
+            color: var(--text);
+            opacity: 0.6;
+            margin-top: 0.3rem;
+        }
+
+        .rating-section {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .rating-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .rating-label {
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+            min-width: 120px;
+            font-family: 'Darker Grotesque', sans-serif;
+        }
+
+        .rating-label.humor { color: var(--accent); }
+        .rating-label.mening { color: var(--primary); }
+        .rating-label.overraskelse { color: var(--secondary); }
+        .rating-label.overall { 
+            font-size: 1rem;
+            font-weight: 900;
+        }
+
+        .stars {
+            display: flex;
+            gap: 0.3rem;
+        }
+
+        .star {
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .star svg {
+            width: 100%;
+            height: 100%;
+            fill: var(--bg);
+            stroke: var(--text);
+            stroke-width: 2;
+            transition: all 0.2s;
+        }
+
+        .star:hover svg,
+        .star.active svg {
+            fill: var(--accent);
+            stroke: var(--text);
+            transform: scale(1.1);
+        }
+
+        .star.active svg {
+            animation: starPop 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes starPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1.1); }
+        }
+
+        .upload-section {
+            background: var(--card-bg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            border: 3px dashed var(--secondary);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-top: 1rem;
+        }
+
+        input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            border: 3px solid var(--text);
+            box-shadow: 8px 8px 0 var(--primary);
+            animation: modalSlide 0.3s ease-out;
+        }
+
+        @keyframes modalSlide {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal h2 {
+            font-family: 'Darker Grotesque', sans-serif;
+            margin-bottom: 1rem;
+            font-size: 2rem;
+        }
+
+        .filter-tags {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-tag {
+            padding: 0.5rem 1rem;
+            background: var(--bg);
+            border: 2px solid var(--text);
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+
+        .filter-tag.active {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .btn {
+                flex: 1;
+                min-width: 120px;
+            }
+
+            .search-sort {
+                flex-direction: column;
+            }
+
+            .search-box, .sort-select {
+                width: 100%;
+            }
+
+            .rating-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .stars {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .star {
+                width: 28px;
+                height: 28px;
+            }
+        }
+
+        .novo-theme .book-card::before {
+            background: var(--novo-sage);
+        }
+
+        .novo-theme .star:hover svg,
+        .novo-theme .star.active svg {
+            fill: var(--novo-terracotta);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--secondary);
+        }
+
+        .empty-state h2 {
+            font-family: 'Darker Grotesque', sans-serif;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .loader {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 4px solid var(--bg);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-container {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .loading-container p {
+            margin-top: 1rem;
+            font-size: 1.1rem;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>⏳ Optælling</h1>
-        
-        <div class="categories" id="categories"></div>
-        
-        <div class="view-toggle">
-            <button id="totalBtn" class="active">Total</button>
-            <button id="monthBtn">Pr. Måned</button>
-            <button id="yearBtn">Pr. År</button>
+    <header>
+        <div class="header-content">
+            <h1>📚 Bog Rater</h1>
+            <div class="controls">
+                <button class="btn theme-toggle" onclick="toggleTheme()">🎨 Skift tema</button>
+                <button class="btn btn-secondary" onclick="exportToGoodreads()">⬇️ Export til Goodreads</button>
+                <button class="btn" onclick="saveProgress()">💾 Gem fremskridt</button>
+            </div>
         </div>
-        
-        <div id="statsView" style="display: none;"></div>
-        
-        <div class="qr-section">
-            <div id="qrcode"></div>
-            <div class="qr-info">Scan QR-koden for at gemme/dele data</div>
-            <button class="delete-today-btn" onclick="deleteTodayEntries()">Slet Dagens Optælling</button>
+    </header>
+
+    <div class="container">
+        <div class="upload-section" id="uploadSection">
+            <h2 style="font-family: 'Darker Grotesque', sans-serif; margin-bottom: 1rem;">Upload din Goodreads CSV</h2>
+            <p style="margin-bottom: 1rem;">Start med at uploade din Goodreads library export fil</p>
+            <div class="file-input-wrapper">
+                <button class="btn">📁 Vælg fil</button>
+                <input type="file" id="csvFile" accept=".csv" onchange="loadCSV(event)">
+            </div>
+        </div>
+
+        <div id="mainContent" style="display: none;">
+            <div class="stats">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalBooks">0</div>
+                        <div class="stat-label">Bøger i alt</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="ratedBooks">0</div>
+                        <div class="stat-label">Rated bøger</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="progressPercent">0%</div>
+                        <div class="stat-label">Fremskridt</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-tags">
+                <div class="filter-tag active" data-filter="all" onclick="filterBooks('all')">Alle</div>
+                <div class="filter-tag" data-filter="rated" onclick="filterBooks('rated')">Rated</div>
+                <div class="filter-tag" data-filter="unrated" onclick="filterBooks('unrated')">Ikke rated</div>
+            </div>
+
+            <div class="search-sort">
+                <input type="text" class="search-box" id="searchBox" placeholder="Søg efter titel eller forfatter..." oninput="filterAndSort()">
+                <select class="sort-select" id="sortSelect" onchange="filterAndSort()">
+                    <option value="title-asc">Titel A-Ø</option>
+                    <option value="title-desc">Titel Ø-A</option>
+                    <option value="author-asc">Forfatter A-Ø</option>
+                    <option value="author-desc">Forfatter Ø-A</option>
+                    <option value="rated-first">Rated først</option>
+                    <option value="unrated-first">Ikke rated først</option>
+                </select>
+            </div>
+
+            <div class="book-list" id="bookList">
+                <div class="loading-container">
+                    <div class="loader"></div>
+                    <p>Indlæser dine bøger...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="successModal">
+        <div class="modal-content">
+            <h2>✅ Succes!</h2>
+            <p id="modalMessage"></p>
+            <button class="btn" onclick="closeModal()" style="margin-top: 1rem; width: 100%;">OK</button>
         </div>
     </div>
 
     <script>
-        const categories = [
-            { name: 'Slik', class: 'slik', id: 'S' },
-            { name: 'Org', class: 'org', id: 'O' },
-            { name: 'Mastro', class: 'mastro', id: 'M' },
-            { name: 'Chokolade', class: 'chokolade', id: 'C' },
-            { name: 'Quick50', class: 'quick50', id: 'Q' },
-            { name: 'Aktier', class: 'aktier', id: 'A' },
-            { name: 'Andet', class: 'andet', id: 'N' },
-            { name: 'Andet 2', class: 'andet', id: 'N2' },
-            { name: 'Andet 3', class: 'andet', id: 'N3' }
-        ];
-        
-        let entries = [];
-        let currentView = 'total';
-        
-        function getBaseURL() {
-            return window.location.href.split('?')[0];
+        let books = [];
+        let ratings = {};
+        let currentFilter = 'all';
+
+        // Load saved data on page load
+        window.addEventListener('load', () => {
+            const savedRatings = localStorage.getItem('bookRatings');
+            const savedBooks = localStorage.getItem('books');
+            const savedTheme = localStorage.getItem('theme');
+            
+            if (savedRatings) {
+                ratings = JSON.parse(savedRatings);
+            }
+            
+            if (savedBooks) {
+                books = JSON.parse(savedBooks);
+                document.getElementById('uploadSection').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+                renderBooks();
+                updateStats();
+            }
+
+            if (savedTheme === 'novo') {
+                document.body.classList.add('novo-theme');
+            }
+        });
+
+        function toggleTheme() {
+            document.body.classList.toggle('novo-theme');
+            const theme = document.body.classList.contains('novo-theme') ? 'novo' : 'bauhaus';
+            localStorage.setItem('theme', theme);
         }
-        
-        function loadFromURL() {
-            const params = new URLSearchParams(window.location.search);
-            const data = params.get('d');
-            if (data) {
-                try {
-                    const decoded = JSON.parse(atob(data));
-                    entries = decoded.map(e => ({
-                        category: categories.find(c => c.id === e.c)?.name || e.c,
-                        timestamp: new Date(e.t).toISOString()
-                    }));
-                } catch (e) {
-                    entries = [];
+
+        function loadCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                parseCSV(text);
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSV(text) {
+            const lines = text.split('\n');
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+            
+            books = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                
+                const values = parseCSVLine(lines[i]);
+                const book = {};
+                
+                headers.forEach((header, index) => {
+                    book[header] = values[index] ? values[index].trim().replace(/^"|"$/g, '').replace(/^="|"$/g, '') : '';
+                });
+                
+                if (book['Title']) {
+                    books.push(book);
                 }
             }
+
+            localStorage.setItem('books', JSON.stringify(books));
+            
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+            
+            renderBooks();
+            updateStats();
+            
+            showModal(`${books.length} bøger indlæst! Begynd at rate dem nu.`);
         }
-        
-        function getDataURL() {
-            const compact = entries.map(e => ({
-                c: categories.find(c => c.name === e.category)?.id || e.category,
-                t: new Date(e.timestamp).getTime()
-            }));
-            const encoded = btoa(JSON.stringify(compact));
-            return getBaseURL() + '?d=' + encoded;
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                const nextChar = line[i + 1];
+                
+                if (char === '"') {
+                    if (inQuotes && nextChar === '"') {
+                        current += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current);
+            
+            return result;
         }
-        
-        function updateQR() {
-            const qrDiv = document.getElementById('qrcode');
-            qrDiv.innerHTML = '';
-            new QRCode(qrDiv, {
-                text: getDataURL(),
-                width: 200,
-                height: 200
-            });
-        }
-        
-        function addEntry(categoryName) {
-            const now = new Date();
-            entries.push({
-                category: categoryName,
-                timestamp: now.toISOString()
-            });
-            updateQR();
-            render();
-        }
-        
-        function getCounts() {
-            const counts = {};
-            categories.forEach(cat => counts[cat.name] = 0);
-            entries.forEach(entry => {
-                if (counts[entry.category] !== undefined) {
-                    counts[entry.category]++;
+
+        function renderBooks() {
+            const bookList = document.getElementById('bookList');
+            let filteredBooks = [...books];
+
+            // Apply filter
+            if (currentFilter === 'rated') {
+                filteredBooks = filteredBooks.filter(book => ratings[book['Book Id']]);
+            } else if (currentFilter === 'unrated') {
+                filteredBooks = filteredBooks.filter(book => !ratings[book['Book Id']]);
+            }
+
+            // Apply search
+            const searchTerm = document.getElementById('searchBox')?.value.toLowerCase() || '';
+            if (searchTerm) {
+                filteredBooks = filteredBooks.filter(book => 
+                    book['Title'].toLowerCase().includes(searchTerm) ||
+                    book['Author'].toLowerCase().includes(searchTerm)
+                );
+            }
+
+            // Apply sort
+            const sortValue = document.getElementById('sortSelect')?.value || 'title-asc';
+            filteredBooks.sort((a, b) => {
+                switch(sortValue) {
+                    case 'title-asc':
+                        return a['Title'].localeCompare(b['Title'], 'da');
+                    case 'title-desc':
+                        return b['Title'].localeCompare(a['Title'], 'da');
+                    case 'author-asc':
+                        return a['Author'].localeCompare(b['Author'], 'da');
+                    case 'author-desc':
+                        return b['Author'].localeCompare(a['Author'], 'da');
+                    case 'rated-first':
+                        return (ratings[b['Book Id']] ? 1 : 0) - (ratings[a['Book Id']] ? 1 : 0);
+                    case 'unrated-first':
+                        return (ratings[a['Book Id']] ? 1 : 0) - (ratings[b['Book Id']] ? 1 : 0);
+                    default:
+                        return 0;
                 }
             });
-            return counts;
-        }
-        
-        function getMonthKey(dateStr) {
-            const d = new Date(dateStr);
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        }
-        
-        function getYearKey(dateStr) {
-            const d = new Date(dateStr);
-            return `${d.getFullYear()}`;
-        }
-        
-        function getMonthName(monthKey) {
-            const [year, month] = monthKey.split('-');
-            const months = ['Januar', 'Februar', 'Marts', 'April', 'Maj', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'December'];
-            return `${months[parseInt(month) - 1]} ${year}`;
-        }
-        
-        function formatDate(isoStr) {
-            const d = new Date(isoStr);
-            return `${d.getDate()}/${d.getMonth() + 1}`;
-        }
-        
-        function getMonthlyData() {
-            const monthly = {};
-            
-            entries.forEach(entry => {
-                const monthKey = getMonthKey(entry.timestamp);
-                if (!monthly[monthKey]) {
-                    monthly[monthKey] = {};
-                    categories.forEach(cat => monthly[monthKey][cat.name] = []);
-                }
-                if (monthly[monthKey][entry.category]) {
-                    monthly[monthKey][entry.category].push(entry.timestamp);
-                }
-            });
-            
-            return monthly;
-        }
-        
-        function getYearlyData() {
-            const yearly = {};
-            
-            entries.forEach(entry => {
-                const yearKey = getYearKey(entry.timestamp);
-                if (!yearly[yearKey]) {
-                    yearly[yearKey] = {};
-                    categories.forEach(cat => yearly[yearKey][cat.name] = 0);
-                }
-                if (yearly[yearKey][entry.category] !== undefined) {
-                    yearly[yearKey][entry.category]++;
-                }
-            });
-            
-            return yearly;
-        }
-        
-        function renderCategories() {
-            const counts = getCounts();
-            const categoriesDiv = document.getElementById('categories');
-            categoriesDiv.innerHTML = '';
-            
-            categories.forEach(cat => {
-                const div = document.createElement('div');
-                div.className = `category ${cat.class}`;
-                div.onclick = () => addEntry(cat.name);
-                div.innerHTML = `
-                    <span class="category-name">${cat.name}</span>
-                    <span class="category-count">${counts[cat.name]}</span>
+
+            if (filteredBooks.length === 0) {
+                bookList.innerHTML = `
+                    <div class="empty-state">
+                        <h2>Ingen bøger fundet</h2>
+                        <p>Prøv at ændre dine søge- eller filterindstillinger</p>
+                    </div>
                 `;
-                categoriesDiv.appendChild(div);
-            });
-        }
-        
-        function deleteTodayEntries() {
-            const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
-            
-            const todayCount = entries.filter(e => e.timestamp.startsWith(todayStr)).length;
-            
-            if (todayCount === 0) {
-                alert('Der er ingen optællinger fra i dag at slette.');
                 return;
             }
-            
-            if (confirm(`Vil du slette ${todayCount} optælling(er) fra i dag?`)) {
-                entries = entries.filter(e => !e.timestamp.startsWith(todayStr));
-                updateQR();
-                render();
-            }
-        }
-        
-        function renderMonthView() {
-            const statsView = document.getElementById('statsView');
-            const monthly = getMonthlyData();
-            const sortedMonths = Object.keys(monthly).sort().reverse();
-            
-            const yearGroups = {};
-            sortedMonths.forEach(monthKey => {
-                const year = monthKey.split('-')[0];
-                if (!yearGroups[year]) yearGroups[year] = [];
-                yearGroups[year].push(monthKey);
-            });
-            
-            let html = '';
-            Object.keys(yearGroups).sort().reverse().forEach(year => {
-                html += `<div class="year-section">
-                    <div class="year-header">${year}</div>`;
+
+            bookList.innerHTML = filteredBooks.map(book => {
+                const bookId = book['Book Id'];
+                const rating = ratings[bookId] || {};
+                const isRated = rating.overall > 0;
                 
-                yearGroups[year].forEach(monthKey => {
-                    html += `<div class="month-section">
-                        <div class="month-header">${getMonthName(monthKey)}</div>`;
-                    
-                    categories.forEach(cat => {
-                        const count = monthly[monthKey][cat.name].length;
-                        if (count > 0) {
-                            const dates = monthly[monthKey][cat.name].map(formatDate).join(', ');
-                            html += `
-                                <div class="category-item">
-                                    <div>
-                                        <div class="category-item-name">${cat.name}</div>
-                                        <div class="entry-dates">${dates}</div>
-                                    </div>
-                                    <div class="category-item-count">${count}</div>
+                return `
+                    <div class="book-card ${isRated ? 'rated' : ''}" data-book-id="${bookId}">
+                        <div class="book-header">
+                            <div class="book-title">${book['Title']}</div>
+                            <div class="book-author">${book['Author']}</div>
+                            ${book['Year Published'] ? `<div class="book-meta">Udgivet: ${book['Year Published']} • ${book['Binding'] || 'N/A'}</div>` : ''}
+                        </div>
+                        
+                        <div class="rating-section">
+                            <div class="rating-row">
+                                <div class="rating-label humor">😄 Humor</div>
+                                <div class="stars" data-category="humor" data-book-id="${bookId}">
+                                    ${generateStars(5, rating.humor || 0, bookId, 'humor')}
                                 </div>
-                            `;
-                        }
-                    });
-                    
-                    html += `</div>`;
-                });
-                
-                html += `</div>`;
-            });
-            
-            statsView.innerHTML = html;
-        }
-        
-        function renderYearView() {
-            const statsView = document.getElementById('statsView');
-            const yearly = getYearlyData();
-            const sortedYears = Object.keys(yearly).sort().reverse();
-            
-            let html = '';
-            
-            sortedYears.forEach(year => {
-                html += `<div class="year-section">
-                    <div class="year-header">${year}</div>
-                    <div class="month-section">`;
-                
-                categories.forEach(cat => {
-                    const count = yearly[year][cat.name];
-                    if (count > 0) {
-                        html += `
-                            <div class="category-item">
-                                <div class="category-item-name">${cat.name}</div>
-                                <div class="category-item-count">${count}</div>
                             </div>
-                        `;
+                            
+                            <div class="rating-row">
+                                <div class="rating-label mening">🧠 Mening</div>
+                                <div class="stars" data-category="mening" data-book-id="${bookId}">
+                                    ${generateStars(5, rating.mening || 0, bookId, 'mening')}
+                                </div>
+                            </div>
+                            
+                            <div class="rating-row">
+                                <div class="rating-label overraskelse">✨ Overraskelse</div>
+                                <div class="stars" data-category="overraskelse" data-book-id="${bookId}">
+                                    ${generateStars(5, rating.overraskelse || 0, bookId, 'overraskelse')}
+                                </div>
+                            </div>
+                            
+                            <div class="rating-row" style="margin-top: 1rem; padding-top: 1rem; border-top: 2px solid var(--bg);">
+                                <div class="rating-label overall">⭐ Samlet</div>
+                                <div class="stars" data-category="overall" data-book-id="${bookId}">
+                                    ${generateStars(5, rating.overall || 0, bookId, 'overall')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Add event listeners to stars
+            document.querySelectorAll('.star').forEach(star => {
+                star.addEventListener('click', handleStarClick);
+            });
+        }
+
+        function generateStars(count, currentRating, bookId, category) {
+            let html = '';
+            for (let i = 1; i <= count; i++) {
+                const active = i <= currentRating ? 'active' : '';
+                html += `
+                    <div class="star ${active}" data-rating="${i}" data-book-id="${bookId}" data-category="${category}">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                    </div>
+                `;
+            }
+            return html;
+        }
+
+        function handleStarClick(e) {
+            const star = e.currentTarget;
+            const bookId = star.dataset.bookId;
+            const category = star.dataset.category;
+            const rating = parseInt(star.dataset.rating);
+
+            if (!ratings[bookId]) {
+                ratings[bookId] = {};
+            }
+
+            ratings[bookId][category] = rating;
+            localStorage.setItem('bookRatings', JSON.stringify(ratings));
+
+            // Update stars visual
+            const starsContainer = star.parentElement;
+            starsContainer.querySelectorAll('.star').forEach((s, index) => {
+                if (index < rating) {
+                    s.classList.add('active');
+                } else {
+                    s.classList.remove('active');
+                }
+            });
+
+            // Update card rated status
+            const card = star.closest('.book-card');
+            if (ratings[bookId].overall > 0) {
+                card.classList.add('rated');
+            }
+
+            updateStats();
+        }
+
+        function updateStats() {
+            const totalBooks = books.length;
+            const ratedBooks = Object.keys(ratings).filter(id => ratings[id].overall > 0).length;
+            const progressPercent = totalBooks > 0 ? Math.round((ratedBooks / totalBooks) * 100) : 0;
+
+            document.getElementById('totalBooks').textContent = totalBooks;
+            document.getElementById('ratedBooks').textContent = ratedBooks;
+            document.getElementById('progressPercent').textContent = progressPercent + '%';
+        }
+
+        function filterBooks(filter) {
+            currentFilter = filter;
+            
+            // Update active filter tag
+            document.querySelectorAll('.filter-tag').forEach(tag => {
+                tag.classList.remove('active');
+                if (tag.dataset.filter === filter) {
+                    tag.classList.add('active');
+                }
+            });
+
+            renderBooks();
+        }
+
+        function filterAndSort() {
+            renderBooks();
+        }
+
+        function saveProgress() {
+            localStorage.setItem('bookRatings', JSON.stringify(ratings));
+            localStorage.setItem('books', JSON.stringify(books));
+            showModal(`Dine ratings er gemt! Du kan fortsætte når som helst.`);
+        }
+
+        function exportToGoodreads() {
+            if (books.length === 0) {
+                showModal('Ingen bøger at eksportere. Upload først en CSV-fil.');
+                return;
+            }
+
+            // Create CSV with updated ratings
+            const headers = Object.keys(books[0]);
+            let csv = headers.join(',') + '\n';
+
+            books.forEach(book => {
+                const bookId = book['Book Id'];
+                const rating = ratings[bookId];
+                
+                // Update My Rating if we have an overall rating
+                if (rating && rating.overall) {
+                    book['My Rating'] = rating.overall;
+                }
+
+                const row = headers.map(header => {
+                    let value = book[header] || '';
+                    // Escape quotes and wrap in quotes if contains comma
+                    if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+                        value = '"' + value.replace(/"/g, '""') + '"';
                     }
+                    return value;
                 });
                 
-                html += `</div></div>`;
+                csv += row.join(',') + '\n';
             });
+
+            // Download CSV
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
             
-            statsView.innerHTML = html;
-        }
-        
-        function render() {
-            renderCategories();
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'goodreads_updated_ratings.csv');
+            link.style.visibility = 'hidden';
             
-            if (currentView === 'month') {
-                renderMonthView();
-            } else if (currentView === 'year') {
-                renderYearView();
-            }
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showModal('Din opdaterede Goodreads CSV er downloadet! "My Rating" kolonnen er opdateret med dine samlede ratings.');
         }
-        
-        document.getElementById('totalBtn').addEventListener('click', function() {
-            currentView = 'total';
-            document.querySelectorAll('.view-toggle button').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            document.getElementById('statsView').style.display = 'none';
-        });
-        
-        document.getElementById('monthBtn').addEventListener('click', function() {
-            currentView = 'month';
-            document.querySelectorAll('.view-toggle button').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            document.getElementById('statsView').style.display = 'block';
-            renderMonthView();
-        });
-        
-        document.getElementById('yearBtn').addEventListener('click', function() {
-            currentView = 'year';
-            document.querySelectorAll('.view-toggle button').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            document.getElementById('statsView').style.display = 'block';
-            renderYearView();
-        });
-        
-        loadFromURL();
-        render();
-        updateQR();
+
+        function showModal(message) {
+            document.getElementById('modalMessage').textContent = message;
+            document.getElementById('successModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('successModal').classList.remove('active');
+        }
     </script>
 </body>
 </html>
