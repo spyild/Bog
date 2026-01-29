@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⏳ Optælling</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 15px;
+        }
+        
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        .categories {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .category {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 8px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s;
+            user-select: none;
+            min-height: 75px;
+        }
+        
+        .category:active {
+            transform: scale(0.98);
+        }
+        
+        .category-name {
+            font-size: 13px;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+        
+        .category-count {
+            font-size: 20px;
+            background: rgba(255,255,255,0.3);
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+        
+        .slik { background: #dc2626; }
+        .org { background: #f97316; }
+        .mastro { background: #4b5563; }
+        .chokolade { background: #78350f; }
+        .quick50 { background: #065f46; }
+        .aktier { background: #6b21a8; }
+        .andet { background: #1e40af; }
+        
+        .view-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .view-toggle button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: #f3f4f6;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        
+        .view-toggle button.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .stats-view {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .year-section {
+            margin-bottom: 25px;
+        }
+        
+        .year-section:last-child {
+            margin-bottom: 0;
+        }
+        
+        .year-header {
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 15px;
+            font-size: 18px;
+            padding-bottom: 8px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .month-section {
+            margin-bottom: 15px;
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+        }
+        
+        .month-header {
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 10px;
+            font-size: 15px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .category-item {
+            padding: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        .category-item:last-child {
+            border-bottom: none;
+        }
+        
+        .category-item-name {
+            font-weight: 600;
+            color: #4b5563;
+            font-size: 14px;
+        }
+        
+        .category-item-count {
+            font-weight: 700;
+            font-size: 18px;
+            color: #1f2937;
+        }
+        
+        .entry-dates {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+        
+        .qr-section {
+            text-align: center;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        
+        #qrcode {
+            display: inline-block;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .qr-info {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+        
+        .delete-today-btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            border: 2px solid #dc2626;
+            background: white;
+            color: #dc2626;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .delete-today-btn:hover {
+            background: #dc2626;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⏳ Optælling</h1>
+        
+        <div class="categories" id="categories"></div>
+        
+        <div class="view-toggle">
+            <button id="totalBtn" class="active">Total</button>
+            <button id="monthBtn">Pr. Måned</button>
+            <button id="yearBtn">Pr. År</button>
+        </div>
+        
+        <div id="statsView" style="display: none;"></div>
+        
+        <div class="qr-section">
+            <div id="qrcode"></div>
+            <div class="qr-info">Scan QR-koden for at gemme/dele data</div>
+            <button class="delete-today-btn" onclick="deleteTodayEntries()">Slet Dagens Optælling</button>
+        </div>
+    </div>
+
+    <script>
+        const categories = [
+            { name: 'Slik', class: 'slik', id: 'S' },
+            { name: 'Org', class: 'org', id: 'O' },
+            { name: 'Mastro', class: 'mastro', id: 'M' },
+            { name: 'Chokolade', class: 'chokolade', id: 'C' },
+            { name: 'Quick50', class: 'quick50', id: 'Q' },
+            { name: 'Aktier', class: 'aktier', id: 'A' },
+            { name: 'Andet', class: 'andet', id: 'N' },
+            { name: 'Andet 2', class: 'andet', id: 'N2' },
+            { name: 'Andet 3', class: 'andet', id: 'N3' }
+        ];
+        
+        let entries = [];
+        let currentView = 'total';
+        
+        function getBaseURL() {
+            return window.location.href.split('?')[0];
+        }
+        
+        function loadFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const data = params.get('d');
+            if (data) {
+                try {
+                    const decoded = JSON.parse(atob(data));
+                    entries = decoded.map(e => ({
+                        category: categories.find(c => c.id === e.c)?.name || e.c,
+                        timestamp: new Date(e.t).toISOString()
+                    }));
+                } catch (e) {
+                    entries = [];
+                }
+            }
+        }
+        
+        function getDataURL() {
+            const compact = entries.map(e => ({
+                c: categories.find(c => c.name === e.category)?.id || e.category,
+                t: new Date(e.timestamp).getTime()
+            }));
+            const encoded = btoa(JSON.stringify(compact));
+            return getBaseURL() + '?d=' + encoded;
+        }
+        
+        function updateQR() {
+            const qrDiv = document.getElementById('qrcode');
+            qrDiv.innerHTML = '';
+            new QRCode(qrDiv, {
+                text: getDataURL(),
+                width: 200,
+                height: 200
+            });
+        }
+        
+        function addEntry(categoryName) {
+            const now = new Date();
+            entries.push({
+                category: categoryName,
+                timestamp: now.toISOString()
+            });
+            updateQR();
+            render();
+        }
+        
+        function getCounts() {
+            const counts = {};
+            categories.forEach(cat => counts[cat.name] = 0);
+            entries.forEach(entry => {
+                if (counts[entry.category] !== undefined) {
+                    counts[entry.category]++;
+                }
+            });
+            return counts;
+        }
+        
+        function getMonthKey(dateStr) {
+            const d = new Date(dateStr);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        }
+        
+        function getYearKey(dateStr) {
+            const d = new Date(dateStr);
+            return `${d.getFullYear()}`;
+        }
+        
+        function getMonthName(monthKey) {
+            const [year, month] = monthKey.split('-');
+            const months = ['Januar', 'Februar', 'Marts', 'April', 'Maj', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'December'];
+            return `${months[parseInt(month) - 1]} ${year}`;
+        }
+        
+        function formatDate(isoStr) {
+            const d = new Date(isoStr);
+            return `${d.getDate()}/${d.getMonth() + 1}`;
+        }
+        
+        function getMonthlyData() {
+            const monthly = {};
+            
+            entries.forEach(entry => {
+                const monthKey = getMonthKey(entry.timestamp);
+                if (!monthly[monthKey]) {
+                    monthly[monthKey] = {};
+                    categories.forEach(cat => monthly[monthKey][cat.name] = []);
+                }
+                if (monthly[monthKey][entry.category]) {
+                    monthly[monthKey][entry.category].push(entry.timestamp);
+                }
+            });
+            
+            return monthly;
+        }
+        
+        function getYearlyData() {
+            const yearly = {};
+            
+            entries.forEach(entry => {
+                const yearKey = getYearKey(entry.timestamp);
+                if (!yearly[yearKey]) {
+                    yearly[yearKey] = {};
+                    categories.forEach(cat => yearly[yearKey][cat.name] = 0);
+                }
+                if (yearly[yearKey][entry.category] !== undefined) {
+                    yearly[yearKey][entry.category]++;
+                }
+            });
+            
+            return yearly;
+        }
+        
+        function renderCategories() {
+            const counts = getCounts();
+            const categoriesDiv = document.getElementById('categories');
+            categoriesDiv.innerHTML = '';
+            
+            categories.forEach(cat => {
+                const div = document.createElement('div');
+                div.className = `category ${cat.class}`;
+                div.onclick = () => addEntry(cat.name);
+                div.innerHTML = `
+                    <span class="category-name">${cat.name}</span>
+                    <span class="category-count">${counts[cat.name]}</span>
+                `;
+                categoriesDiv.appendChild(div);
+            });
+        }
+        
+        function deleteTodayEntries() {
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            
+            const todayCount = entries.filter(e => e.timestamp.startsWith(todayStr)).length;
+            
+            if (todayCount === 0) {
+                alert('Der er ingen optællinger fra i dag at slette.');
+                return;
+            }
+            
+            if (confirm(`Vil du slette ${todayCount} optælling(er) fra i dag?`)) {
+                entries = entries.filter(e => !e.timestamp.startsWith(todayStr));
+                updateQR();
+                render();
+            }
+        }
+        
+        function renderMonthView() {
+            const statsView = document.getElementById('statsView');
+            const monthly = getMonthlyData();
+            const sortedMonths = Object.keys(monthly).sort().reverse();
+            
+            const yearGroups = {};
+            sortedMonths.forEach(monthKey => {
+                const year = monthKey.split('-')[0];
+                if (!yearGroups[year]) yearGroups[year] = [];
+                yearGroups[year].push(monthKey);
+            });
+            
+            let html = '';
+            Object.keys(yearGroups).sort().reverse().forEach(year => {
+                html += `<div class="year-section">
+                    <div class="year-header">${year}</div>`;
+                
+                yearGroups[year].forEach(monthKey => {
+                    html += `<div class="month-section">
+                        <div class="month-header">${getMonthName(monthKey)}</div>`;
+                    
+                    categories.forEach(cat => {
+                        const count = monthly[monthKey][cat.name].length;
+                        if (count > 0) {
+                            const dates = monthly[monthKey][cat.name].map(formatDate).join(', ');
+                            html += `
+                                <div class="category-item">
+                                    <div>
+                                        <div class="category-item-name">${cat.name}</div>
+                                        <div class="entry-dates">${dates}</div>
+                                    </div>
+                                    <div class="category-item-count">${count}</div>
+                                </div>
+                            `;
+                        }
+                    });
+                    
+                    html += `</div>`;
+                });
+                
+                html += `</div>`;
+            });
+            
+            statsView.innerHTML = html;
+        }
+        
+        function renderYearView() {
+            const statsView = document.getElementById('statsView');
+            const yearly = getYearlyData();
+            const sortedYears = Object.keys(yearly).sort().reverse();
+            
+            let html = '';
+            
+            sortedYears.forEach(year => {
+                html += `<div class="year-section">
+                    <div class="year-header">${year}</div>
+                    <div class="month-section">`;
+                
+                categories.forEach(cat => {
+                    const count = yearly[year][cat.name];
+                    if (count > 0) {
+                        html += `
+                            <div class="category-item">
+                                <div class="category-item-name">${cat.name}</div>
+                                <div class="category-item-count">${count}</div>
+                            </div>
+                        `;
+                    }
+                });
+                
+                html += `</div></div>`;
+            });
+            
+            statsView.innerHTML = html;
+        }
+        
+        function render() {
+            renderCategories();
+            
+            if (currentView === 'month') {
+                renderMonthView();
+            } else if (currentView === 'year') {
+                renderYearView();
+            }
+        }
+        
+        document.getElementById('totalBtn').addEventListener('click', function() {
+            currentView = 'total';
+            document.querySelectorAll('.view-toggle button').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('statsView').style.display = 'none';
+        });
+        
+        document.getElementById('monthBtn').addEventListener('click', function() {
+            currentView = 'month';
+            document.querySelectorAll('.view-toggle button').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('statsView').style.display = 'block';
+            renderMonthView();
+        });
+        
+        document.getElementById('yearBtn').addEventListener('click', function() {
+            currentView = 'year';
+            document.querySelectorAll('.view-toggle button').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('statsView').style.display = 'block';
+            renderYearView();
+        });
+        
+        loadFromURL();
+        render();
+        updateQR();
+    </script>
+</body>
+</html>
