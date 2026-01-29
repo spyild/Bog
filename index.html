@@ -196,6 +196,66 @@
             font-weight: 600;
         }
 
+        /* Alfabetisk navigation */
+        .alpha-nav {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 3px solid var(--text);
+            box-shadow: 5px 5px 0 var(--primary);
+        }
+
+        .alpha-nav-title {
+            font-family: 'Darker Grotesque', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .alpha-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.5rem;
+        }
+
+        .alpha-btn {
+            padding: 0.8rem;
+            background: var(--bg);
+            border: 2px solid var(--text);
+            color: var(--text);
+            font-family: 'Darker Grotesque', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+        }
+
+        .alpha-btn:hover {
+            background: var(--accent);
+            transform: translate(1px, 1px);
+            box-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+        }
+
+        .alpha-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 0 0 0 rgba(0,0,0,0.2);
+        }
+
+        .alpha-btn.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            background: var(--bg);
+        }
+
+        .alpha-btn.disabled:hover {
+            transform: none;
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+        }
+
         .search-sort {
             display: flex;
             gap: 1rem;
@@ -230,6 +290,7 @@
             position: relative;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             animation: slideIn 0.4s ease-out;
+            scroll-margin-top: 120px;
         }
 
         @keyframes slideIn {
@@ -262,6 +323,15 @@
 
         .book-card.rated {
             border-color: var(--primary);
+        }
+
+        .book-card.highlight {
+            animation: highlight 1s ease-out;
+        }
+
+        @keyframes highlight {
+            0%, 100% { background: var(--card-bg); }
+            50% { background: #FFF9C4; }
         }
 
         .book-header {
@@ -562,6 +632,16 @@
                 width: 28px;
                 height: 28px;
             }
+
+            .alpha-grid {
+                grid-template-columns: repeat(5, 1fr);
+                gap: 0.4rem;
+            }
+
+            .alpha-btn {
+                padding: 0.6rem 0.4rem;
+                font-size: 1.1rem;
+            }
         }
 
         .novo-theme .star:hover svg,
@@ -658,6 +738,23 @@
                 </div>
             </div>
 
+            <!-- Alfabetisk navigation -->
+            <div class="alpha-nav">
+                <div class="alpha-nav-title">🔤 Spring til bogstav:</div>
+                <div class="alpha-grid">
+                    <button class="alpha-btn" onclick="jumpToLetter('E')">E</button>
+                    <button class="alpha-btn" onclick="jumpToLetter('H')">H</button>
+                    <button class="alpha-btn" onclick="jumpToLetter('J')">J</button>
+                    <button class="alpha-btn" onclick="jumpToLetter('L')">L</button>
+                    <button class="alpha-btn" onclick="jumpToLetter('O')">O</button>
+                    <button class="alpha-btn" onclick="jumpToLetter('R')">R</button>
+                    <button class="alpha-btn" onclick="jumpToLetter('S')">S</button>
+                    <button class="alpha-btn" onclick="jumpToLetter('V')">V</button>
+                    <button class="alpha-btn" onclick="jumpToLetter('Z')">Z</button>
+                    <button class="alpha-btn" onclick="jumpToLetter('Å')">Å</button>
+                </div>
+            </div>
+
             <div class="filter-tags">
                 <div class="filter-tag active" data-filter="all" onclick="filterBooks('all')">Alle</div>
                 <div class="filter-tag" data-filter="rated" onclick="filterBooks('rated')">Rated</div>
@@ -730,6 +827,7 @@
                     document.getElementById('mainContent').style.display = 'block';
                     renderBooks();
                     updateStats();
+                    updateAlphaButtons();
                 } catch (e) {
                     console.error('Fejl ved indlæsning af bøger:', e);
                 }
@@ -886,6 +984,7 @@
             // Render bøger
             renderBooks();
             updateStats();
+            updateAlphaButtons();
             
             showModal(`✅ ${books.length} bøger indlæst succesfuldt!${errorCount > 0 ? ` (${errorCount} rækker sprunget over)` : ''}`);
         }
@@ -921,6 +1020,85 @@
             fields.push(currentField.trim());
             
             return fields;
+        }
+
+        function normalizeForAlpha(str) {
+            // Normaliser tegn til deres basisform (Æ → AE, Ø → O, Å → AA)
+            return str.toUpperCase()
+                .replace(/Æ/g, 'AE')
+                .replace(/Ø/g, 'O')
+                .replace(/Å/g, 'AA');
+        }
+
+        function jumpToLetter(letter) {
+            // Gem nuværende sortering
+            const currentSort = document.getElementById('sortSelect')?.value || 'title-asc';
+            
+            // Sæt sortering til titel A-Ø hvis ikke allerede sat
+            if (!currentSort.startsWith('title')) {
+                document.getElementById('sortSelect').value = 'title-asc';
+                filterAndSort();
+            }
+            
+            // Find første bog der starter med dette bogstav
+            const bookCards = Array.from(document.querySelectorAll('.book-card'));
+            
+            for (const card of bookCards) {
+                const title = card.querySelector('.book-title').textContent;
+                const firstChar = normalizeForAlpha(title.charAt(0));
+                const targetChar = normalizeForAlpha(letter);
+                
+                if (firstChar === targetChar || 
+                    (letter === 'Å' && title.charAt(0).toUpperCase() === 'Å')) {
+                    // Scroll til kortet
+                    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // Tilføj highlight animation
+                    card.classList.add('highlight');
+                    setTimeout(() => card.classList.remove('highlight'), 1000);
+                    return;
+                }
+            }
+            
+            // Hvis ingen bog fundet
+            showModal(`Ingen bøger fundet der starter med "${letter}"`);
+        }
+
+        function updateAlphaButtons() {
+            const letters = ['E', 'H', 'J', 'L', 'O', 'R', 'S', 'V', 'Z', 'Å'];
+            const availableLetters = new Set();
+            
+            books.forEach(book => {
+                const title = book['Title'] || book['title'] || '';
+                if (title) {
+                    const firstChar = title.charAt(0).toUpperCase();
+                    if (firstChar === 'Å') {
+                        availableLetters.add('Å');
+                    } else {
+                        const normalized = normalizeForAlpha(firstChar);
+                        availableLetters.add(normalized);
+                    }
+                }
+            });
+            
+            // Opdater knapper
+            const buttons = document.querySelectorAll('.alpha-btn');
+            buttons.forEach(btn => {
+                const letter = btn.textContent;
+                const normalizedLetter = normalizeForAlpha(letter);
+                
+                if (letter === 'Å') {
+                    // Special case for Å
+                    if (availableLetters.has('Å')) {
+                        btn.classList.remove('disabled');
+                    } else {
+                        btn.classList.add('disabled');
+                    }
+                } else if (availableLetters.has(normalizedLetter)) {
+                    btn.classList.remove('disabled');
+                } else {
+                    btn.classList.add('disabled');
+                }
+            });
         }
 
         function renderBooks() {
@@ -1137,6 +1315,7 @@
 
         function filterAndSort() {
             renderBooks();
+            updateAlphaButtons();
         }
 
         function saveProgress() {
@@ -1239,6 +1418,7 @@
             // Re-render
             renderBooks();
             updateStats();
+            updateAlphaButtons();
 
             // Vis bekræftelse
             showModal('Bogen er blevet slettet permanent.');
