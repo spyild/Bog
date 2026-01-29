@@ -508,6 +508,15 @@
             font-size: 1.1rem;
             font-weight: 600;
         }
+
+        .error-message {
+            background: #fee;
+            border: 2px solid #c00;
+            color: #c00;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -530,6 +539,7 @@
                 <button class="btn">📁 Vælg fil</button>
                 <input type="file" id="csvFile" accept=".csv" onchange="loadCSV(event)">
             </div>
+            <div id="errorMessage"></div>
         </div>
 
         <div id="mainContent" style="display: none;">
@@ -623,33 +633,96 @@
             const file = event.target.files[0];
             if (!file) return;
 
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.innerHTML = '';
+
             const reader = new FileReader();
             reader.onload = function(e) {
-                const text = e.target.result;
-                parseCSV(text);
+                try {
+                    const text = e.target.result;
+                    parseCSV(text);
+                } catch (error) {
+                    console.error('Fejl ved indlæsning:', error);
+                    errorDiv.innerHTML = `<div class="error-message">Fejl ved indlæsning af filen: ${error.message}</div>`;
+                }
             };
-            reader.readAsText(file);
+            reader.onerror = function() {
+                errorDiv.innerHTML = '<div class="error-message">Kunne ikke læse filen. Prøv igen.</div>';
+            };
+            reader.readAsText(file, 'UTF-8');
         }
 
         function parseCSV(text) {
-            const lines = text.split('\n');
-            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+            // Split into lines, but handle line breaks within quoted fields
+            const lines = [];
+            let currentLine = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const nextChar = text[i + 1];
+                
+                if (char === '"') {
+                    if (inQuotes && nextChar === '"') {
+                        currentLine += '"';
+                        i++; // Skip next quote
+                    } else {
+                        inQuotes = !inQuotes;
+                        currentLine += char;
+                    }
+                } else if (char === '\n' && !inQuotes) {
+                    if (currentLine.trim()) {
+                        lines.push(currentLine);
+                    }
+                    currentLine = '';
+                } else if (char === '\r') {
+                    // Skip carriage returns
+                    continue;
+                } else {
+                    currentLine += char;
+                }
+            }
+            
+            // Add last line if exists
+            if (currentLine.trim()) {
+                lines.push(currentLine);
+            }
+
+            if (lines.length === 0) {
+                throw new Error('CSV-filen er tom');
+            }
+
+            // Parse header
+            const headers = parseCSVLine(lines[0]);
+            console.log('Headers found:', headers);
             
             books = [];
             
+            // Parse data rows
             for (let i = 1; i < lines.length; i++) {
-                if (!lines[i].trim()) continue;
-                
-                const values = parseCSVLine(lines[i]);
-                const book = {};
-                
-                headers.forEach((header, index) => {
-                    book[header] = values[index] ? values[index].trim().replace(/^"|"$/g, '').replace(/^="|"$/g, '') : '';
-                });
-                
-                if (book['Title']) {
-                    books.push(book);
+                try {
+                    const values = parseCSVLine(lines[i]);
+                    
+                    if (values.length === 0 || !values.some(v => v.trim())) {
+                        continue; // Skip empty lines
+                    }
+                    
+                    const book = {};
+                    headers.forEach((header, index) => {
+                        book[header] = values[index] || '';
+                    });
+                    
+                    // Only add if has a title
+                    if (book['Title'] && book['Title'].trim()) {
+                        books.push(book);
+                    }
+                } catch (error) {
+                    console.warn(`Fejl i linje ${i + 1}:`, error);
                 }
+            }
+
+            if (books.length === 0) {
+                throw new Error('Ingen bøger fundet i CSV-filen. Tjek at filen er korrekt formateret.');
             }
 
             localStorage.setItem('books', JSON.stringify(books));
@@ -674,19 +747,24 @@
                 
                 if (char === '"') {
                     if (inQuotes && nextChar === '"') {
+                        // Escaped quote
                         current += '"';
-                        i++;
+                        i++; // Skip next quote
                     } else {
+                        // Toggle quote state
                         inQuotes = !inQuotes;
                     }
                 } else if (char === ',' && !inQuotes) {
-                    result.push(current);
+                    // Field separator
+                    result.push(current.trim());
                     current = '';
                 } else {
                     current += char;
                 }
             }
-            result.push(current);
+            
+            // Add last field
+            result.push(current.trim());
             
             return result;
         }
@@ -706,8 +784,8 @@
             const searchTerm = document.getElementById('searchBox')?.value.toLowerCase() || '';
             if (searchTerm) {
                 filteredBooks = filteredBooks.filter(book => 
-                    book['Title'].toLowerCase().includes(searchTerm) ||
-                    book['Author'].toLowerCase().includes(searchTerm)
+                    (book['Title'] || '').toLowerCase().includes(searchTerm) ||
+                    (book['Author'] || '').toLowerCase().includes(searchTerm)
                 );
             }
 
@@ -716,13 +794,13 @@
             filteredBooks.sort((a, b) => {
                 switch(sortValue) {
                     case 'title-asc':
-                        return a['Title'].localeCompare(b['Title'], 'da');
+                        return (a['Title'] || '').localeCompare(b['Title'] || '', 'da');
                     case 'title-desc':
-                        return b['Title'].localeCompare(a['Title'], 'da');
+                        return (b['Title'] || '').localeCompare(a['Title'] || '', 'da');
                     case 'author-asc':
-                        return a['Author'].localeCompare(b['Author'], 'da');
+                        return (a['Author'] || '').localeCompare(b['Author'] || '', 'da');
                     case 'author-desc':
-                        return b['Author'].localeCompare(a['Author'], 'da');
+                        return (b['Author'] || '').localeCompare(a['Author'] || '', 'da');
                     case 'rated-first':
                         return (ratings[b['Book Id']] ? 1 : 0) - (ratings[a['Book Id']] ? 1 : 0);
                     case 'unrated-first':
@@ -750,9 +828,9 @@
                 return `
                     <div class="book-card ${isRated ? 'rated' : ''}" data-book-id="${bookId}">
                         <div class="book-header">
-                            <div class="book-title">${book['Title']}</div>
-                            <div class="book-author">${book['Author']}</div>
-                            ${book['Year Published'] ? `<div class="book-meta">Udgivet: ${book['Year Published']} • ${book['Binding'] || 'N/A'}</div>` : ''}
+                            <div class="book-title">${escapeHtml(book['Title'] || 'Uden titel')}</div>
+                            <div class="book-author">${escapeHtml(book['Author'] || 'Ukendt forfatter')}</div>
+                            ${book['Year Published'] ? `<div class="book-meta">Udgivet: ${escapeHtml(book['Year Published'])} • ${escapeHtml(book['Binding'] || 'N/A')}</div>` : ''}
                         </div>
                         
                         <div class="rating-section">
@@ -792,6 +870,12 @@
             document.querySelectorAll('.star').forEach(star => {
                 star.addEventListener('click', handleStarClick);
             });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function generateStars(count, currentRating, bookId, category) {
@@ -883,7 +967,9 @@
 
             // Create CSV with updated ratings
             const headers = Object.keys(books[0]);
-            let csv = headers.join(',') + '\n';
+            
+            // Build CSV with proper quoting
+            let csv = headers.map(h => quoteCSVField(h)).join(',') + '\n';
 
             books.forEach(book => {
                 const bookId = book['Book Id'];
@@ -891,16 +977,11 @@
                 
                 // Update My Rating if we have an overall rating
                 if (rating && rating.overall) {
-                    book['My Rating'] = rating.overall;
+                    book['My Rating'] = rating.overall.toString();
                 }
 
                 const row = headers.map(header => {
-                    let value = book[header] || '';
-                    // Escape quotes and wrap in quotes if contains comma
-                    if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-                        value = '"' + value.replace(/"/g, '""') + '"';
-                    }
-                    return value;
+                    return quoteCSVField(book[header] || '');
                 });
                 
                 csv += row.join(',') + '\n';
@@ -920,6 +1001,17 @@
             document.body.removeChild(link);
 
             showModal('Din opdaterede Goodreads CSV er downloadet! "My Rating" kolonnen er opdateret med dine samlede ratings.');
+        }
+
+        function quoteCSVField(field) {
+            // Convert to string
+            field = String(field);
+            
+            // If field contains comma, quote, or newline, wrap in quotes and escape quotes
+            if (field.includes(',') || field.includes('"') || field.includes('\n') || field.includes('\r')) {
+                return '"' + field.replace(/"/g, '""') + '"';
+            }
+            return field;
         }
 
         function showModal(message) {
