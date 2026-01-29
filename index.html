@@ -695,6 +695,76 @@
             font-weight: 600;
             border-radius: 4px;
         }
+
+        .scroll-to-top {
+            background: var(--accent);
+            border: 3px solid var(--text);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            box-shadow: 5px 5px 0 var(--primary);
+        }
+
+        .scroll-to-top:hover {
+            transform: translateY(-3px);
+            box-shadow: 8px 8px 0 var(--primary);
+        }
+
+        .scroll-to-top:active {
+            transform: translateY(0);
+            box-shadow: 3px 3px 0 var(--primary);
+        }
+
+        .scroll-to-top-content {
+            font-family: 'Darker Grotesque', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text);
+        }
+
+        .scroll-to-top-icon {
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 0.5rem;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-10px);
+            }
+            60% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .scroll-to-top-subtitle {
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            opacity: 0.8;
+            font-weight: 600;
+        }
+
+        body.novo-theme .scroll-to-top {
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        body.novo-theme .scroll-to-top:hover {
+            box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+        }
+
+        body.novo-theme .scroll-to-top:active {
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
     </style>
 </head>
 <body>
@@ -805,6 +875,28 @@
         let books = [];
         let ratings = {};
         let currentFilter = 'all';
+
+        // Sjove beskeder til "tilbage til toppen" knappen
+        const scrollMessages = [
+            { icon: '🚀', text: 'Zoom til toppen!', subtitle: 'Houston, vi har liftoff' },
+            { icon: '🎈', text: 'Svæv opad!', subtitle: 'Lad os flyve tilbage' },
+            { icon: '⬆️', text: 'Hop til tops!', subtitle: 'Spring tilbage til start' },
+            { icon: '🪜', text: 'Klatr op igen!', subtitle: 'Vi tager trapperne' },
+            { icon: '🎢', text: 'Rollercoaster opad!', subtitle: 'Tilbage til starten' },
+            { icon: '🧗', text: 'Bestigung!', subtitle: 'Toppen kalder' },
+            { icon: '🎯', text: 'Tilbage til base!', subtitle: 'Mission: Toppen' },
+            { icon: '🌟', text: 'Til stjernerne!', subtitle: 'Op, op og væk' },
+            { icon: '🎪', text: 'Spring tilbage!', subtitle: 'Cirkus-comeback' },
+            { icon: '🦘', text: 'Kænguru-hop!', subtitle: 'Boing tilbage til top' }
+        ];
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function getRandomScrollMessage() {
+            return scrollMessages[Math.floor(Math.random() * scrollMessages.length)];
+        }
 
         // Load saved data on page load
         window.addEventListener('load', () => {
@@ -1170,7 +1262,7 @@
                 return;
             }
 
-            bookList.innerHTML = filteredBooks.map(book => {
+            bookList.innerHTML = filteredBooks.map((book, index) => {
                 const bookId = book['Book Id'] || book['book id'] || '';
                 const title = book['Title'] || book['title'] || 'Uden titel';
                 const author = book['Author'] || book['author'] || 'Ukendt forfatter';
@@ -1185,7 +1277,7 @@
                 const searchQuery = encodeURIComponent(`${title} ${author}`);
                 const googleBooksUrl = `https://www.google.com/search?tbm=bks&q=${searchQuery}`;
                 
-                return `
+                const bookCard = `
                     <div class="book-card ${isRated ? 'rated' : ''}" data-book-id="${escapeHtml(bookId)}">
                         <div class="book-header">
                             <div class="book-title">${escapeHtml(title)}</div>
@@ -1228,6 +1320,20 @@
                         </div>
                     </div>
                 `;
+                
+                // Tilføj "tilbage til toppen" knap hver 20. bog
+                if ((index + 1) % 20 === 0 && index < filteredBooks.length - 1) {
+                    const msg = getRandomScrollMessage();
+                    return bookCard + `
+                        <div class="scroll-to-top" onclick="scrollToTop()">
+                            <span class="scroll-to-top-icon">${msg.icon}</span>
+                            <div class="scroll-to-top-content">${msg.text}</div>
+                            <div class="scroll-to-top-subtitle">${msg.subtitle}</div>
+                        </div>
+                    `;
+                }
+                
+                return bookCard;
             }).join('');
 
             // Add event listeners to stars
